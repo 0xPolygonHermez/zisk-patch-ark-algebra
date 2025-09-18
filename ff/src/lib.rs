@@ -8,7 +8,10 @@
     clippy::missing_const_for_fn
 )]
 #![allow(clippy::op_ref, clippy::suspicious_op_assign_impl)]
-#![deny(unsafe_code)]
+#![cfg_attr(
+    not(all(target_os = "zkvm", target_vendor = "zisk")),
+    deny(unsafe_code)
+)]
 #![doc = include_str!("../README.md")]
 
 #[macro_use]

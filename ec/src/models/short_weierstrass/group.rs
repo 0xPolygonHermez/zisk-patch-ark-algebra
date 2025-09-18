@@ -345,6 +345,54 @@ impl<P: SWCurveConfig, T: Borrow<Affine<P>>> AddAssign<T> for Projective<P> {
                 return;
             }
 
+            // TODO: The overhead is too high, disable for now
+            // #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+            // {
+            //     if P::BaseField::characteristic() == &BLS12_381_MODULUS && P::BaseField::extension_degree() == 1 {
+            //         let self_affine = self.into_affine();
+            //         if self_affine.x != other_x {
+            //             // P != Q,-Q
+            //             let mut self_x = self_affine.x.to_base_prime_field_elements().next().unwrap().into_bigint();
+            //             let mut self_y = self_affine.y.to_base_prime_field_elements().next().unwrap().into_bigint();
+            //             let other_x = other_x.to_base_prime_field_elements().next().unwrap().into_bigint();
+            //             let other_y = other_y.to_base_prime_field_elements().next().unwrap().into_bigint();
+
+            //             addition_bls12_381(
+            //                 self_x.as_mut().try_into().unwrap(),
+            //                 self_y.as_mut().try_into().unwrap(),
+            //                 other_x.as_ref().try_into().unwrap(),
+            //                 other_y.as_ref().try_into().unwrap()
+            //             );
+
+            //             let rx_pf = <P::BaseField as Field>::BasePrimeField::from_bigint(self_x).unwrap();
+            //             let ry_pf = <P::BaseField as Field>::BasePrimeField::from_bigint(self_y).unwrap();
+            //             let rx = P::BaseField::from_base_prime_field(rx_pf);
+            //             let ry = P::BaseField::from_base_prime_field(ry_pf);
+            //             *self = Projective::new_unchecked(rx, ry, P::BaseField::one());
+            //         } else if self_affine.y == other_y {
+            //             // P == Q
+            //             let mut self_x = self_affine.x.to_base_prime_field_elements().next().unwrap().into_bigint();
+            //             let mut self_y = self_affine.y.to_base_prime_field_elements().next().unwrap().into_bigint();
+
+            //             doubling_bls12_381(
+            //                 self_x.as_mut().try_into().unwrap(),
+            //                 self_y.as_mut().try_into().unwrap()
+            //             );
+
+            //             let rx_pf = <P::BaseField as Field>::BasePrimeField::from_bigint(self_x).unwrap();
+            //             let ry_pf = <P::BaseField as Field>::BasePrimeField::from_bigint(self_y).unwrap();
+            //             let rx = P::BaseField::from_base_prime_field(rx_pf);
+            //             let ry = P::BaseField::from_base_prime_field(ry_pf);
+            //             *self = Projective::new_unchecked(rx, ry, P::BaseField::one());
+            //         } else {
+            //             // P == -Q
+            //             *self = Self::zero();
+            //         }
+
+            //         return;
+            //     }
+            // }
+
             // Z1Z1 = Z1^2
             let mut z1z1 = self.z;
             z1z1.square_in_place();

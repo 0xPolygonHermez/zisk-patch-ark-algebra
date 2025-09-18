@@ -21,6 +21,12 @@ use ark_std::{
 };
 use zeroize::Zeroize;
 
+#[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+use ziskos::{
+    add_fp2_bls12_381, dbl_fp2_bls12_381, inv_fp2_bls12_381, mul_fp2_bls12_381, neg_fp2_bls12_381,
+    sub_fp2_bls12_381,
+};
+
 /// Defines a Quadratic extension field from a quadratic non-residue.
 pub trait QuadExtConfig: 'static + Send + Sync + Sized {
     /// The prime field that this quadratic extension is eventually an extension of.
@@ -193,15 +199,33 @@ impl<P: QuadExtConfig> AdditiveGroup for QuadExtField<P> {
     }
 
     fn double_in_place(&mut self) -> &mut Self {
-        self.c0.double_in_place();
-        self.c1.double_in_place();
-        self
+        cfg_if::cfg_if! {
+            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+                unsafe {
+                    dbl_fp2_bls12_381(self as *mut Self as *mut u64);
+                }
+                self
+            } else {
+                self.c0.double_in_place();
+                self.c1.double_in_place();
+                self
+            }
+        }
     }
 
     fn neg_in_place(&mut self) -> &mut Self {
-        self.c0.neg_in_place();
-        self.c1.neg_in_place();
-        self
+        cfg_if::cfg_if! {
+            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+                unsafe {
+                    neg_fp2_bls12_381(self as *mut Self as *mut u64);
+                }
+                self
+            } else {
+                self.c0.neg_in_place();
+                self.c1.neg_in_place();
+                self
+            }
+        }
     }
 }
 
@@ -323,18 +347,28 @@ impl<P: QuadExtConfig> Field for QuadExtField<P> {
         if self.is_zero() {
             None
         } else {
-            // Guide to Pairing-based Cryptography, Algorithm 5.19.
-            // v1 = c1.square()
-            let v1 = self.c1.square();
-            // v0 = c0.square() - beta * v1
-            let mut v0 = v1;
-            P::sub_and_mul_base_field_by_nonresidue(&mut v0, &self.c0.square());
+            cfg_if::cfg_if! {
+                if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+                    let mut result = self.clone();
+                    unsafe {
+                        inv_fp2_bls12_381(&mut result as *mut Self as *mut u64);
+                    }
+                    Some(result)
+                } else {
+                    // Guide to Pairing-based Cryptography, Algorithm 5.19.
+                    // v1 = c1.square()
+                    let v1 = self.c1.square();
+                    // v0 = c0.square() - beta * v1
+                    let mut v0 = v1;
+                    P::sub_and_mul_base_field_by_nonresidue(&mut v0, &self.c0.square());
 
-            v0.inverse().map(|v1| {
-                let c0 = self.c0 * &v1;
-                let c1 = -(self.c1 * &v1);
-                Self::new(c0, c1)
-            })
+                    v0.inverse().map(|v1| {
+                        let c0 = self.c0 * &v1;
+                        let c1 = -(self.c1 * &v1);
+                        Self::new(c0, c1)
+                    })
+                }
+            }
         }
     }
 
@@ -586,8 +620,17 @@ impl<P: QuadExtConfig> Add<&QuadExtField<P>> for QuadExtField<P> {
 
     #[inline]
     fn add(mut self, other: &Self) -> Self {
-        self += other;
-        self
+        cfg_if::cfg_if! {
+            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+                unsafe {
+                    add_fp2_bls12_381(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                }
+                self
+            } else {
+                self += other;
+                self
+            }
+        }
     }
 }
 
@@ -596,8 +639,17 @@ impl<P: QuadExtConfig> Sub<&QuadExtField<P>> for QuadExtField<P> {
 
     #[inline(always)]
     fn sub(mut self, other: &Self) -> Self {
-        self -= other;
-        self
+        cfg_if::cfg_if! {
+            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+                unsafe {
+                    sub_fp2_bls12_381(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                }
+                self
+            } else {
+                self -= other;
+                self
+            }
+        }
     }
 }
 
@@ -606,8 +658,17 @@ impl<P: QuadExtConfig> Mul<&QuadExtField<P>> for QuadExtField<P> {
 
     #[inline(always)]
     fn mul(mut self, other: &Self) -> Self {
-        self *= other;
-        self
+        cfg_if::cfg_if! {
+            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+                unsafe {
+                    mul_fp2_bls12_381(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                }
+                self
+            } else {
+                self *= other;
+                self
+            }
+        }
     }
 }
 
@@ -625,16 +686,32 @@ impl<P: QuadExtConfig> Div<&QuadExtField<P>> for QuadExtField<P> {
 impl<P: QuadExtConfig> AddAssign<&Self> for QuadExtField<P> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
-        self.c0 += &other.c0;
-        self.c1 += &other.c1;
+        cfg_if::cfg_if! {
+            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+                unsafe {
+                    add_fp2_bls12_381(self as *mut Self as *mut u64, other as *const Self as *const u64);
+                }
+            } else {
+                self.c0 += &other.c0;
+                self.c1 += &other.c1;
+            }
+        }
     }
 }
 
 impl<P: QuadExtConfig> SubAssign<&Self> for QuadExtField<P> {
     #[inline]
     fn sub_assign(&mut self, other: &Self) {
-        self.c0 -= &other.c0;
-        self.c1 -= &other.c1;
+        cfg_if::cfg_if! {
+            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+                unsafe {
+                    sub_fp2_bls12_381(self as *mut Self as *mut u64, other as *const Self as *const u64);
+                }
+            } else {
+                self.c0 -= &other.c0;
+                self.c1 -= &other.c1;
+            }
+        }
     }
 }
 
