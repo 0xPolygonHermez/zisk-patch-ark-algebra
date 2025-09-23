@@ -22,7 +22,7 @@ pub use montgomery_backend::*;
 
 #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
 use ziskos::{
-    add_fp_bls12_381, dbl_fp_bls12_381, inv_fp_bls12_381, neg_fp_bls12_381, sub_fp_bls12_381,
+    add_fp_bls12_381_ptr, dbl_fp_bls12_381_ptr, inv_fp_bls12_381_ptr, neg_fp_bls12_381_ptr, sub_fp_bls12_381_ptr,
 };
 
 /// A trait that specifies the configuration of a prime field.
@@ -199,7 +199,7 @@ impl<P: FpConfig<N>, const N: usize> AdditiveGroup for Fp<P, N> {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 let mut result = *self;
                 unsafe {
-                    dbl_fp_bls12_381(&mut result as *mut Self as *mut u64);
+                    dbl_fp_bls12_381_ptr(&mut result as *mut Self as *mut u64);
                 }
                 result
             } else {
@@ -330,7 +330,7 @@ impl<P: FpConfig<N>, const N: usize> Field for Fp<P, N> {
                 }
                 let mut result_bigint = P::into_bigint(*self);
                 unsafe {
-                    inv_fp_bls12_381(result_bigint.0.as_mut_ptr() as *mut u64);
+                    inv_fp_bls12_381_ptr(result_bigint.0.as_mut_ptr() as *mut u64);
                 }
                 P::from_bigint(result_bigint)
             }
@@ -722,7 +722,7 @@ impl<P: FpConfig<N>, const N: usize> Neg for Fp<P, N> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    neg_fp_bls12_381(&mut self as *mut Self as *mut u64);
+                    neg_fp_bls12_381_ptr(&mut self as *mut Self as *mut u64);
                 }
                 self
             } else {
@@ -741,7 +741,7 @@ impl<P: FpConfig<N>, const N: usize> Add<&Fp<P, N>> for Fp<P, N> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    add_fp_bls12_381(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    add_fp_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
                 self
             } else {
@@ -760,7 +760,7 @@ impl<P: FpConfig<N>, const N: usize> Sub<&Fp<P, N>> for Fp<P, N> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    sub_fp_bls12_381(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    sub_fp_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
                 self
             } else {

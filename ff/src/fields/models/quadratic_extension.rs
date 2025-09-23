@@ -23,8 +23,8 @@ use zeroize::Zeroize;
 
 #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
 use ziskos::{
-    add_fp2_bls12_381, dbl_fp2_bls12_381, inv_fp2_bls12_381, mul_fp2_bls12_381, neg_fp2_bls12_381,
-    sub_fp2_bls12_381,
+    add_fp2_bls12_381_ptr, dbl_fp2_bls12_381_ptr, inv_fp2_bls12_381_ptr, mul_fp2_bls12_381_ptr, neg_fp2_bls12_381_ptr,
+    sub_fp2_bls12_381_ptr,
 };
 
 /// Defines a Quadratic extension field from a quadratic non-residue.
@@ -202,7 +202,7 @@ impl<P: QuadExtConfig> AdditiveGroup for QuadExtField<P> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    dbl_fp2_bls12_381(self as *mut Self as *mut u64);
+                    dbl_fp2_bls12_381_ptr(self as *mut Self as *mut u64);
                 }
                 self
             } else {
@@ -217,7 +217,7 @@ impl<P: QuadExtConfig> AdditiveGroup for QuadExtField<P> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    neg_fp2_bls12_381(self as *mut Self as *mut u64);
+                    neg_fp2_bls12_381_ptr(self as *mut Self as *mut u64);
                 }
                 self
             } else {
@@ -351,7 +351,7 @@ impl<P: QuadExtConfig> Field for QuadExtField<P> {
                 if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                     let mut result = self.clone();
                     unsafe {
-                        inv_fp2_bls12_381(&mut result as *mut Self as *mut u64);
+                        inv_fp2_bls12_381_ptr(&mut result as *mut Self as *mut u64);
                     }
                     Some(result)
                 } else {
@@ -623,7 +623,7 @@ impl<P: QuadExtConfig> Add<&QuadExtField<P>> for QuadExtField<P> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    add_fp2_bls12_381(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    add_fp2_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
                 self
             } else {
@@ -642,7 +642,7 @@ impl<P: QuadExtConfig> Sub<&QuadExtField<P>> for QuadExtField<P> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    sub_fp2_bls12_381(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    sub_fp2_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
                 self
             } else {
@@ -661,7 +661,7 @@ impl<P: QuadExtConfig> Mul<&QuadExtField<P>> for QuadExtField<P> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    mul_fp2_bls12_381(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    mul_fp2_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
                 self
             } else {
@@ -689,7 +689,7 @@ impl<P: QuadExtConfig> AddAssign<&Self> for QuadExtField<P> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    add_fp2_bls12_381(self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    add_fp2_bls12_381_ptr(self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
             } else {
                 self.c0 += &other.c0;
@@ -705,7 +705,7 @@ impl<P: QuadExtConfig> SubAssign<&Self> for QuadExtField<P> {
         cfg_if::cfg_if! {
             if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
                 unsafe {
-                    sub_fp2_bls12_381(self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    sub_fp2_bls12_381_ptr(self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
             } else {
                 self.c0 -= &other.c0;
