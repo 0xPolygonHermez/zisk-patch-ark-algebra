@@ -21,7 +21,7 @@ mod montgomery_backend;
 pub use montgomery_backend::*;
 
 #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
-use ziskos::{
+use ziskos::zisklib::{
     add_fp_bls12_381_ptr, dbl_fp_bls12_381_ptr, inv_fp_bls12_381_ptr, neg_fp_bls12_381_ptr, sub_fp_bls12_381_ptr,
 };
 

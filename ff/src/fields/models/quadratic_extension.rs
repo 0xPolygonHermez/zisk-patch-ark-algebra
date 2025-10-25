@@ -22,7 +22,7 @@ use ark_std::{
 use zeroize::Zeroize;
 
 #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
-use ziskos::{
+use ziskos::zisklib::{
     add_fp2_bls12_381_ptr, dbl_fp2_bls12_381_ptr, inv_fp2_bls12_381_ptr, mul_fp2_bls12_381_ptr, neg_fp2_bls12_381_ptr,
     sub_fp2_bls12_381_ptr,
 };
