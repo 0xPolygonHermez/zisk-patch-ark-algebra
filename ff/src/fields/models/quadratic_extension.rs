@@ -199,33 +199,35 @@ impl<P: QuadExtConfig> AdditiveGroup for QuadExtField<P> {
     }
 
     fn double_in_place(&mut self) -> &mut Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            if P::BaseField::extension_degree() == 1 {
                 unsafe {
                     dbl_fp2_bls12_381_ptr(self as *mut Self as *mut u64);
                 }
-                self
-            } else {
-                self.c0.double_in_place();
-                self.c1.double_in_place();
-                self
+                return self;
             }
         }
+
+        self.c0.double_in_place();
+        self.c1.double_in_place();
+        self
     }
 
     fn neg_in_place(&mut self) -> &mut Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            if P::BaseField::extension_degree() == 1 {
                 unsafe {
                     neg_fp2_bls12_381_ptr(self as *mut Self as *mut u64);
                 }
-                self
-            } else {
-                self.c0.neg_in_place();
-                self.c1.neg_in_place();
-                self
+                return self;
             }
         }
+
+        self.c0.neg_in_place();
+        self.c1.neg_in_place();
+        self
     }
 }
 
@@ -347,28 +349,37 @@ impl<P: QuadExtConfig> Field for QuadExtField<P> {
         if self.is_zero() {
             None
         } else {
-            cfg_if::cfg_if! {
-                if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
-                    let mut result = self.clone();
+            #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+            {
+                if P::BaseField::extension_degree() == 1 {
+                    let c0_elements: Vec<P::BasePrimeField> = self.c0.to_base_prime_field_elements().collect();
+                    let c1_elements: Vec<P::BasePrimeField> = self.c1.to_base_prime_field_elements().collect();
+                    
+                    let x0 = P::BasePrimeField::into_bigint(c0_elements[0]);
+                    let y0 = P::BasePrimeField::into_bigint(c1_elements[0]);
+                    let mut x = [x0, y0];
                     unsafe {
-                        inv_fp2_bls12_381_ptr(&mut result as *mut Self as *mut u64);
+                        inv_fp2_bls12_381_ptr(x.as_mut_ptr() as *mut u64);
                     }
-                    Some(result)
-                } else {
-                    // Guide to Pairing-based Cryptography, Algorithm 5.19.
-                    // v1 = c1.square()
-                    let v1 = self.c1.square();
-                    // v0 = c0.square() - beta * v1
-                    let mut v0 = v1;
-                    P::sub_and_mul_base_field_by_nonresidue(&mut v0, &self.c0.square());
-
-                    v0.inverse().map(|v1| {
-                        let c0 = self.c0 * &v1;
-                        let c1 = -(self.c1 * &v1);
-                        Self::new(c0, c1)
-                    })
+                    return Some(Self::new(
+                        P::BaseField::from_base_prime_field(P::BasePrimeField::from_bigint(x[0]).unwrap()),
+                        P::BaseField::from_base_prime_field(P::BasePrimeField::from_bigint(x[1]).unwrap()),
+                    ));
                 }
             }
+
+            // Guide to Pairing-based Cryptography, Algorithm 5.19.
+            // v1 = c1.square()
+            let v1 = self.c1.square();
+            // v0 = c0.square() - beta * v1
+            let mut v0 = v1;
+            P::sub_and_mul_base_field_by_nonresidue(&mut v0, &self.c0.square());
+
+            v0.inverse().map(|v1| {
+                let c0 = self.c0 * &v1;
+                let c1 = -(self.c1 * &v1);
+                Self::new(c0, c1)
+            })
         }
     }
 
@@ -620,17 +631,18 @@ impl<P: QuadExtConfig> Add<&QuadExtField<P>> for QuadExtField<P> {
 
     #[inline]
     fn add(mut self, other: &Self) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            if P::BaseField::extension_degree() == 1 {
                 unsafe {
                     add_fp2_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
-                self
-            } else {
-                self += other;
-                self
+                return self;
             }
         }
+
+        self += other;
+        self
     }
 }
 
@@ -639,17 +651,18 @@ impl<P: QuadExtConfig> Sub<&QuadExtField<P>> for QuadExtField<P> {
 
     #[inline(always)]
     fn sub(mut self, other: &Self) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            if P::BaseField::extension_degree() == 1 {
                 unsafe {
                     sub_fp2_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
-                self
-            } else {
-                self -= other;
-                self
+                return self;
             }
         }
+
+        self -= other;
+        self
     }
 }
 
@@ -658,17 +671,32 @@ impl<P: QuadExtConfig> Mul<&QuadExtField<P>> for QuadExtField<P> {
 
     #[inline(always)]
     fn mul(mut self, other: &Self) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            if P::BaseField::extension_degree() == 1 {
+                let c0_elements: Vec<P::BasePrimeField> = self.c0.to_base_prime_field_elements().collect();
+                let c1_elements: Vec<P::BasePrimeField> = self.c1.to_base_prime_field_elements().collect();
+                let other_c0_elements: Vec<P::BasePrimeField> = other.c0.to_base_prime_field_elements().collect();
+                let other_c1_elements: Vec<P::BasePrimeField> = other.c1.to_base_prime_field_elements().collect();
+                
+                let x0 = P::BasePrimeField::into_bigint(c0_elements[0]);
+                let y0 = P::BasePrimeField::into_bigint(c1_elements[0]);
+                let mut x = [x0, y0];
+                let x1 = P::BasePrimeField::into_bigint(other_c0_elements[0]);
+                let y1 = P::BasePrimeField::into_bigint(other_c1_elements[0]);
+                let y = [x1, y1];
                 unsafe {
-                    mul_fp2_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    mul_fp2_bls12_381_ptr(x.as_mut_ptr() as *mut u64, y.as_ptr() as *const u64);
                 }
-                self
-            } else {
-                self *= other;
-                self
+                return Self::new(
+                    P::BaseField::from_base_prime_field(P::BasePrimeField::from_bigint(x[0]).unwrap()),
+                    P::BaseField::from_base_prime_field(P::BasePrimeField::from_bigint(x[1]).unwrap()),
+                );
             }
         }
+
+        self *= other;
+        self
     }
 }
 
@@ -686,32 +714,36 @@ impl<P: QuadExtConfig> Div<&QuadExtField<P>> for QuadExtField<P> {
 impl<P: QuadExtConfig> AddAssign<&Self> for QuadExtField<P> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            if P::BaseField::extension_degree() == 1 {
                 unsafe {
                     add_fp2_bls12_381_ptr(self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
-            } else {
-                self.c0 += &other.c0;
-                self.c1 += &other.c1;
+                return;
             }
         }
+
+        self.c0 += &other.c0;
+        self.c1 += &other.c1;
     }
 }
 
 impl<P: QuadExtConfig> SubAssign<&Self> for QuadExtField<P> {
     #[inline]
     fn sub_assign(&mut self, other: &Self) {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            if P::BaseField::extension_degree() == 1 {
                 unsafe {
                     sub_fp2_bls12_381_ptr(self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
-            } else {
-                self.c0 -= &other.c0;
-                self.c1 -= &other.c1;
+                return;
             }
         }
+
+        self.c0 -= &other.c0;
+        self.c1 -= &other.c1;
     }
 }
 
