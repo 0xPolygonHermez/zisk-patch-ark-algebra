@@ -48,3 +48,6 @@ pub mod prelude {
     };
     pub use ark_std::UniformRand;
 }
+
+#[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+pub mod zisk;

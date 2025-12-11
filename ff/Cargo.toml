@@ -27,12 +27,6 @@ zeroize = { workspace = true }
 num-bigint.workspace = true
 digest = { workspace = true, features = ["alloc"] }
 
-[target.'cfg(all(target_os = "zkvm", target_vendor = "zisk"))'.dependencies]
-cfg-if = "1.0"
-ziskos = { git = "https://github.com/0xPolygonHermez/zisk.git", branch = "fix/bls" }
-# Local development
-# ziskos = { path = "../../../zisk/ziskos/entrypoint" }
-
 [dev-dependencies]
 ark-test-curves = { workspace = true, features = ["bls12_381_curve", "mnt6_753", "secp256k1"] }
 blake2.workspace = true

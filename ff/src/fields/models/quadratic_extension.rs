@@ -22,10 +22,7 @@ use ark_std::{
 use zeroize::Zeroize;
 
 #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
-use ziskos::zisklib::{
-    add_fp2_bls12_381_ptr, dbl_fp2_bls12_381_ptr, inv_fp2_bls12_381_ptr, mul_fp2_bls12_381_ptr, neg_fp2_bls12_381_ptr,
-    sub_fp2_bls12_381_ptr,
-};
+use crate::zisk;
 
 /// Defines a Quadratic extension field from a quadratic non-residue.
 pub trait QuadExtConfig: 'static + Send + Sync + Sized {
@@ -203,7 +200,7 @@ impl<P: QuadExtConfig> AdditiveGroup for QuadExtField<P> {
         {
             if P::BaseField::extension_degree() == 1 {
                 unsafe {
-                    dbl_fp2_bls12_381_ptr(self as *mut Self as *mut u64);
+                    zisk::dbl_fp2_bls12_381_c(self as *mut Self as *mut u64);
                 }
                 return self;
             }
@@ -219,7 +216,7 @@ impl<P: QuadExtConfig> AdditiveGroup for QuadExtField<P> {
         {
             if P::BaseField::extension_degree() == 1 {
                 unsafe {
-                    neg_fp2_bls12_381_ptr(self as *mut Self as *mut u64);
+                    zisk::neg_fp2_bls12_381_c(self as *mut Self as *mut u64);
                 }
                 return self;
             }
@@ -359,7 +356,7 @@ impl<P: QuadExtConfig> Field for QuadExtField<P> {
                     let y0 = P::BasePrimeField::into_bigint(c1_elements[0]);
                     let mut x = [x0, y0];
                     unsafe {
-                        inv_fp2_bls12_381_ptr(x.as_mut_ptr() as *mut u64);
+                        zisk::inv_fp2_bls12_381_c(x.as_mut_ptr() as *mut u64);
                     }
                     return Some(Self::new(
                         P::BaseField::from_base_prime_field(P::BasePrimeField::from_bigint(x[0]).unwrap()),
@@ -635,7 +632,7 @@ impl<P: QuadExtConfig> Add<&QuadExtField<P>> for QuadExtField<P> {
         {
             if P::BaseField::extension_degree() == 1 {
                 unsafe {
-                    add_fp2_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    zisk::add_fp2_bls12_381_c(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
                 return self;
             }
@@ -655,7 +652,7 @@ impl<P: QuadExtConfig> Sub<&QuadExtField<P>> for QuadExtField<P> {
         {
             if P::BaseField::extension_degree() == 1 {
                 unsafe {
-                    sub_fp2_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    zisk::sub_fp2_bls12_381_c(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
                 return self;
             }
@@ -686,7 +683,7 @@ impl<P: QuadExtConfig> Mul<&QuadExtField<P>> for QuadExtField<P> {
                 let y1 = P::BasePrimeField::into_bigint(other_c1_elements[0]);
                 let y = [x1, y1];
                 unsafe {
-                    mul_fp2_bls12_381_ptr(x.as_mut_ptr() as *mut u64, y.as_ptr() as *const u64);
+                    zisk::mul_fp2_bls12_381_c(x.as_mut_ptr() as *mut u64, y.as_ptr() as *const u64);
                 }
                 return Self::new(
                     P::BaseField::from_base_prime_field(P::BasePrimeField::from_bigint(x[0]).unwrap()),
@@ -718,7 +715,7 @@ impl<P: QuadExtConfig> AddAssign<&Self> for QuadExtField<P> {
         {
             if P::BaseField::extension_degree() == 1 {
                 unsafe {
-                    add_fp2_bls12_381_ptr(self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    zisk::add_fp2_bls12_381_c(self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
                 return;
             }
@@ -736,7 +733,7 @@ impl<P: QuadExtConfig> SubAssign<&Self> for QuadExtField<P> {
         {
             if P::BaseField::extension_degree() == 1 {
                 unsafe {
-                    sub_fp2_bls12_381_ptr(self as *mut Self as *mut u64, other as *const Self as *const u64);
+                    zisk::sub_fp2_bls12_381_c(self as *mut Self as *mut u64, other as *const Self as *const u64);
                 }
                 return;
             }

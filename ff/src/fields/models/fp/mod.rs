@@ -21,9 +21,7 @@ mod montgomery_backend;
 pub use montgomery_backend::*;
 
 #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
-use ziskos::zisklib::{
-    add_fp_bls12_381_ptr, dbl_fp_bls12_381_ptr, inv_fp_bls12_381_ptr, neg_fp_bls12_381_ptr, sub_fp_bls12_381_ptr,
-};
+use crate::zisk;
 
 /// A trait that specifies the configuration of a prime field.
 /// Also specifies how to perform arithmetic on field elements.
@@ -195,18 +193,20 @@ impl<P: FpConfig<N>, const N: usize> AdditiveGroup for Fp<P, N> {
 
     #[inline]
     fn double(&self) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
-                let mut result = *self;
-                unsafe {
-                    dbl_fp_bls12_381_ptr(&mut result as *mut Self as *mut u64);
-                }
-                result
-            } else {
-                let mut temp = *self;
-                temp.double_in_place();
-                temp
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            let mut result = *self;
+            unsafe {
+                zisk::dbl_fp_bls12_381_c(&mut result as *mut Self as *mut u64);
             }
+            result
+        }
+
+        #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
+        {
+            let mut temp = *self;
+            temp.double_in_place();
+            temp
         }
     }
 
@@ -323,20 +323,21 @@ impl<P: FpConfig<N>, const N: usize> Field for Fp<P, N> {
 
     #[inline]
     fn inverse(&self) -> Option<Self> {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
-                if self.is_zero() {
-                    return None;
-                }
-                let mut result_bigint = P::into_bigint(*self);
-                unsafe {
-                    inv_fp_bls12_381_ptr(result_bigint.0.as_mut_ptr() as *mut u64);
-                }
-                P::from_bigint(result_bigint)
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            if self.is_zero() {
+                return None;
             }
-            else {
-                P::inverse(self)
+            let mut result_bigint = P::into_bigint(*self);
+            unsafe {
+                zisk::inv_fp_bls12_381_c(result_bigint.0.as_mut_ptr() as *mut u64);
             }
+            P::from_bigint(result_bigint)
+        }
+
+        #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
+        {
+            P::inverse(self)
         }
     }
 
@@ -719,16 +720,18 @@ impl<P: FpConfig<N>, const N: usize> Neg for Fp<P, N> {
     type Output = Self;
     #[inline]
     fn neg(mut self) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
-                unsafe {
-                    neg_fp_bls12_381_ptr(&mut self as *mut Self as *mut u64);
-                }
-                self
-            } else {
-                P::neg_in_place(&mut self);
-                self
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            unsafe {
+                zisk::neg_fp_bls12_381_c(&mut self as *mut Self as *mut u64);
             }
+            self
+        }
+
+        #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
+        {
+            P::neg_in_place(&mut self);
+            self
         }
     }
 }
@@ -738,16 +741,17 @@ impl<P: FpConfig<N>, const N: usize> Add<&Fp<P, N>> for Fp<P, N> {
 
     #[inline]
     fn add(mut self, other: &Self) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
-                unsafe {
-                    add_fp_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
-                }
-                self
-            } else {
-                self += other;
-                self
+        {
+            unsafe {
+                zisk::add_fp_bls12_381_c(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
             }
+            self
+        }
+
+        #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
+        {
+            self += other;
+            self
         }
     }
 }
@@ -757,16 +761,18 @@ impl<P: FpConfig<N>, const N: usize> Sub<&Fp<P, N>> for Fp<P, N> {
 
     #[inline]
     fn sub(mut self, other: &Self) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))] {
-                unsafe {
-                    sub_fp_bls12_381_ptr(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
-                }
-                self
-            } else {
-                self -= other;
-                self
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        {
+            unsafe {
+                zisk::sub_fp_bls12_381_c(&mut self as *mut Self as *mut u64, other as *const Self as *const u64);
             }
+            self
+        }
+
+        #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
+        {
+            self -= other;
+            self
         }
     }
 }
